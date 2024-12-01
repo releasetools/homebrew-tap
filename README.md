@@ -15,6 +15,8 @@ brew "rt"
 
 ## Developers
 
+### Local development
+
 See the following commands:
 
 ```shell
@@ -28,3 +30,7 @@ make test
 ### Check formula
 make check
 ```
+
+### Pull Requests
+
+- When you're ready to merge a change, label the PR with `pr-pull`
