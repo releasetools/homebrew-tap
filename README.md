@@ -33,4 +33,7 @@ make check
 
 ### Pull Requests
 
+- Wait for the tests to run and pass
 - When you're ready to merge a change, label the PR with `pr-pull`
+- Since the workflow is triggered when a PR is labeled, you may need to remove and re-apply the label
+  on a subsequent run
