@@ -31,9 +31,12 @@ make test
 make check
 ```
 
-### Pull Requests
+### Update the formula version
 
-- Wait for the tests to run and pass
-- When you're ready to merge a change, label the PR with `pr-pull`
-- Since the workflow is triggered when a PR is labeled, you may need to remove and re-apply the label
-  on a subsequent run
+- Edit [rt.rb](Formula/rt.rb)
+- Update `url=https://github.com/releasetools/bash/releases/download/vX.Y.Z/releasetools.bash`
+- Generate a checksum and set it into the `sha256` field
+
+  ```shell
+  VERSION="vX.Y.Z" curl -sL https://github.com/releasetools/bash/releases/download/$VERSION/releasetools.bash | shasum -a 256
+  ```
