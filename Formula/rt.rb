@@ -1,8 +1,8 @@
 class Rt < Formula
   desc "Release tools for shell and GitHub workflows"
   homepage "https://release.tools"
-  url "https://github.com/releasetools/bash/releases/download/v0.0.9/releasetools.bash"
-  sha256 "e14b6ce05701ac1d56fecc84b7b27c3099d2d8f334ceb5a75784264497ca9f31"
+  url "https://github.com/releasetools/bash/releases/download/v0.0.10/releasetools.bash"
+  sha256 "e9683591c331dc6d034870fb52d7f8c424cf67aee42b08a90283b2991f71a647"
   license "Apache-2.0"
   head "https://github.com/releasetools/bash.git", branch: "main"
 
