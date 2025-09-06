@@ -1,4 +1,4 @@
-class Rt < Formula
+class ReleasetoolsCli < Formula
   desc "Release tools for GitHub workflows and local use"
   homepage "https://release.tools"
   url "https://github.com/releasetools/bash/releases/download/v0.0.12/releasetools.bash"
