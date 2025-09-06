@@ -12,6 +12,7 @@ class ReleasetoolsCli < Formula
     # system Formula["python"].opt_bin/"pip3", "install", "--user", "--break-system-packages", "toml"
     system "python3", "-m", "pip", "install", *std_pip_args(build_isolation: true), "toml"
     bin.install "releasetools.bash" => "releasetools"
+    bin.install_symlink bin/"releasetools" => "rt"
   end
 
   test do
