@@ -2,15 +2,15 @@
 
 ## How do I install these formulae?
 
-`brew install releasetools/tap/rt`
+`brew install releasetools/tap/releasetools-cli`
 
-Or `brew tap releasetools/tap` and then `brew install rt`.
+Or `brew tap releasetools/tap` and then `brew install releasetools-cli`.
 
 Or, in a [`brew bundle`](https://github.com/Homebrew/homebrew-bundle) `Brewfile`:
 
 ```ruby
 tap "releasetools/tap"
-brew "rt"
+brew "releasetools-cli"
 ```
 
 ## Developers

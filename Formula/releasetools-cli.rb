@@ -1,8 +1,8 @@
 class Rt < Formula
-  desc "Release tools for shell and GitHub workflows"
+  desc "Release tools for GitHub workflows and local use"
   homepage "https://release.tools"
-  url "https://github.com/releasetools/bash/releases/download/v0.0.11/releasetools.bash"
-  sha256 "7bf2bdbfa8bf81d76bd3e1f7f2d39ad0f604ef564e5c9dadca36e92fa93fe97d"
+  url "https://github.com/releasetools/bash/releases/download/v0.0.12/releasetools.bash"
+  sha256 "331773a21828008b350cb6414605322f89873ead7aec35df5f5229e25e67605a"
   license "Apache-2.0"
   head "https://github.com/releasetools/bash.git", branch: "main"
 
@@ -11,11 +11,11 @@ class Rt < Formula
   def install
     # system Formula["python"].opt_bin/"pip3", "install", "--user", "--break-system-packages", "toml"
     system "python3", "-m", "pip", "install", *std_pip_args(build_isolation: true), "toml"
-    bin.install "releasetools.bash" => "rt"
+    bin.install "releasetools.bash" => "releasetools"
   end
 
   test do
-    system bin/"rt", "version"
-    system bin/"rt", "base::check_deps"
+    system bin/"releasetools", "version"
+    system bin/"releasetools", "base::check_deps"
   end
 end
