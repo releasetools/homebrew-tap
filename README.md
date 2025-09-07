@@ -2,11 +2,18 @@
 
 ## How do I install these formulae?
 
-`brew install releasetools/tap/releasetools-cli`
+### One shot
 
-Or `brew tap releasetools/tap` and then `brew install releasetools-cli`.
+- Execute `brew install releasetools/tap/releasetools-cli`
 
-Or, in a [`brew bundle`](https://github.com/Homebrew/homebrew-bundle) `Brewfile`:
+### Tap and install
+
+- Run `brew tap releasetools/tap`
+- And then `brew install releasetools-cli`.
+
+### Brew bundle
+
+Add the following lines to a [`brew bundle`](https://github.com/Homebrew/homebrew-bundle) `Brewfile`:
 
 ```ruby
 tap "releasetools/tap"
@@ -21,22 +28,16 @@ See the following commands:
 
 ```shell
 
-### Test installation
-make install
-
-### Run brew tests
-make test
-
-### Check formula
+### Check the formula
 make check
 ```
 
 ### Update the formula version
 
-- Edit [rt.rb](Formula/rt.rb)
+- Edit [releasetools-cli.rb](Formula/releasetools-cli.rb)
 - Update `url=https://github.com/releasetools/bash/releases/download/vX.Y.Z/releasetools.bash`
-- Generate a checksum and set it into the `sha256` field
+- Update the checksum in the `sha256` field
 
   ```shell
-  VERSION="vX.Y.Z" curl -sL https://github.com/releasetools/bash/releases/download/$VERSION/releasetools.bash | shasum -a 256
+  curl -sL "https://github.com/releasetools/bash/releases/download/vX.Y.Z/releasetools.bash.sha256"
   ```

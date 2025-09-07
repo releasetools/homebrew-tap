@@ -3,20 +3,14 @@ FORMULA_NAME=releasetools-cli
 
 .PHONY: install
 install:
-	@if brew list $(FORMULA_NAME) > /dev/null 2>&1; then \
-        brew reinstall --build-from-source ./Formula/$(FORMULA_NAME).rb; \
-    else \
-        brew install --HEAD --build-from-source ./Formula/$(FORMULA_NAME).rb; \
-    fi
-
-.PHONY: test
-test:
-	@brew test --verbose ./Formula/$(FORMULA_NAME).rb
+	@brew tap releasetools/tap $(PWD) 2>/dev/null || true
+	@brew install releasetools/tap/$(FORMULA_NAME) 2>/dev/null || true
 
 .PHONY: check
-check:
+check: install
 	@brew audit --strict --online releasetools/tap/$(FORMULA_NAME)
 
 .PHONY: uninstall
 uninstall:
-	@brew uninstall ./Formula/$(FORMULA_NAME).rb
+	@brew uninstall releasetools/tap/$(FORMULA_NAME) 2>/dev/null || true
+	@brew untap releasetools/tap 2>/dev/null || true
