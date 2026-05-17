@@ -1,10 +1,10 @@
 class ReleasetoolsCli < Formula
   desc "Release tools for GitHub workflows and local use"
   homepage "https://release.tools"
-  url "https://github.com/releasetools/bash/releases/download/v0.0.12/releasetools.bash"
+  url "https://github.com/releasetools/cli/releases/download/v0.0.12/releasetools.bash"
   sha256 "331773a21828008b350cb6414605322f89873ead7aec35df5f5229e25e67605a"
   license "Apache-2.0"
-  head "https://github.com/releasetools/bash.git", branch: "main"
+  head "https://github.com/releasetools/cli.git", branch: "main"
 
   depends_on "python3" => :build
 
