@@ -7,8 +7,17 @@ on:
   schedule:
     # Daily, so a missed dispatch still gets picked up.
     - cron: "17 9 * * *"
+
+  # Manual runs, optionally targeting a specific release rather than the newest one.
   workflow_dispatch:
-  # Lets releasetools/cli trigger this immediately after publishing a release.
+    inputs:
+      version:
+        description: "Release to bump to (e.g. v0.0.13). Defaults to the newest release."
+        required: false
+        default: ""
+
+  # Lets releasetools/cli trigger this immediately after publishing a release. The payload
+  # may carry a 'version'; without it the newest release is used.
   repository_dispatch:
     types: [upstream-released]
 
@@ -28,8 +37,14 @@ jobs:
         id: bump
         env:
           GH_TOKEN: ${{ github.token }}
+          # Empty for scheduled runs, and for a dispatch that did not name one.
+          REQUESTED: ${{ inputs.version || github.event.client_payload.version || '' }}
         run: |
-          version="$(scripts/bump-formula.sh)"
+          if [[ -n "$REQUESTED" ]]; then
+            version="$(scripts/bump-formula.sh "$REQUESTED")"
+          else
+            version="$(scripts/bump-formula.sh)"
+          fi
           echo "version=$version" >>"$GITHUB_OUTPUT"
 
       - name: Open a pull request
