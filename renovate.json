@@ -5,5 +5,9 @@
     "github>MihaiBojin/renovate:group-github-actions",
     "github>MihaiBojin/renovate:lock-file-maintenance",
     "helpers:pinGitHubActionDigests"
-  ]
+  ],
+  "homebrew": {
+    "description": "Renovate's homebrew manager reads our formula fine, but when it writes a new url it only tries '<repo>-<semver>.tar.gz' (which we do not publish) and the '/archive/refs/tags/' source archive (which does not contain releasetools.bash, since dist/ is gitignored upstream). Either way it would pair a valid sha256 with the wrong file and break bin.install. .github/workflows/bump-formula.yml does the bump against the real release asset instead.",
+    "enabled": false
+  }
 }

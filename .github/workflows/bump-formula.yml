@@ -1,0 +1,88 @@
+name: Bump formula
+
+# Renovate handles the GitHub Actions in this repo, but it cannot bump the formula itself --
+# see the comment at the top of scripts/bump-formula.sh, and the packageRules entry in
+# renovate.json that disables its homebrew manager for that reason.
+on:
+  schedule:
+    # Daily, so a missed dispatch still gets picked up.
+    - cron: "17 9 * * *"
+
+  # Manual runs, optionally targeting a specific release rather than the newest one.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release to bump to (e.g. v0.0.13). Defaults to the newest release."
+        required: false
+        default: ""
+
+  # Lets releasetools/cli trigger this immediately after publishing a release. The payload
+  # may carry a 'version'; without it the newest release is used.
+  repository_dispatch:
+    types: [upstream-released]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    name: Bump the formula to the latest release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Bump the formula
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Empty for scheduled runs, and for a dispatch that did not name one.
+          REQUESTED: ${{ inputs.version || github.event.client_payload.version || '' }}
+        run: |
+          if [[ -n "$REQUESTED" ]]; then
+            version="$(scripts/bump-formula.sh "$REQUESTED")"
+          else
+            version="$(scripts/bump-formula.sh)"
+          fi
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Open a pull request
+        # An empty version means the formula was already current, so there is nothing to do.
+        if: steps.bump.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          branch="bump-formula-$VERSION"
+
+          # Nothing staged means the bump reported a new version without changing the file.
+          # That should be impossible -- bump-formula.sh verifies its own rewrite -- so treat
+          # it as a failure rather than opening an empty pull request.
+          git add Formula
+          if git diff --cached --quiet; then
+            echo "::error::bump-formula.sh reported $VERSION but changed nothing" >&2
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Branch $branch already exists; nothing to do." >&2
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -m "chore(formula): update releasetools-cli to $VERSION"
+          git push origin "$branch"
+
+          # Built with printf so the YAML block indentation does not end up in the body.
+          body="$(printf '%s\n\n%s\n' \
+            "Points the formula at the \`releasetools.bash\` asset from [$VERSION](https://github.com/releasetools/cli/releases/tag/$VERSION), with the \`sha256\` taken from the checksum published alongside it after verifying the download against it." \
+            "Opened by \`.github/workflows/bump-formula.yml\`.")"
+
+          # --base is omitted so gh targets the repository's default branch.
+          gh pr create \
+            --head "$branch" \
+            --title "chore(formula): update releasetools-cli to $VERSION" \
+            --body "$body"
