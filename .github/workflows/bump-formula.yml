@@ -65,16 +65,23 @@ jobs:
             exit 1
           fi
 
+          # The branch can already exist from an earlier run whose push succeeded but whose
+          # pull request did not. Only skip when there is also a pull request open for it,
+          # otherwise the rerun would report success while leaving the branch unmerged.
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-            echo "Branch $branch already exists; nothing to do." >&2
-            exit 0
+            if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+              echo "Branch $branch is already pushed and has an open pull request." >&2
+              exit 0
+            fi
+            echo "Branch $branch exists with no open pull request; opening one." >&2
+            git checkout -B "$branch" "origin/$branch"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -b "$branch"
+            git commit -m "chore(formula): update releasetools-cli to $VERSION"
+            git push origin "$branch"
           fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$branch"
-          git commit -m "chore(formula): update releasetools-cli to $VERSION"
-          git push origin "$branch"
 
           # Built with printf so the YAML block indentation does not end up in the body.
           body="$(printf '%s\n\n%s\n' \
@@ -82,7 +89,26 @@ jobs:
             "Opened by \`.github/workflows/bump-formula.yml\`.")"
 
           # --base is omitted so gh targets the repository's default branch.
-          gh pr create \
+          if out="$(gh pr create \
             --head "$branch" \
             --title "chore(formula): update releasetools-cli to $VERSION" \
-            --body "$body"
+            --body "$body" 2>&1)"; then
+            echo "$out"
+            exit 0
+          fi
+
+          echo "$out" >&2
+          compare="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${branch}?expand=1"
+
+          # The branch is pushed and the formula in it is correct, so the bump is not lost.
+          # Still a failure: the job's purpose is to leave a reviewable pull request, and a
+          # green tick here would mean nobody finds out it stopped halfway.
+          case "$out" in
+          *"not permitted to create or approve pull requests"*)
+            echo "::error::Pushed $branch but could not open a pull request. Either enable Settings > Actions > General > Allow GitHub Actions to create and approve pull requests, or land releasetools/cli#30 so this step runs as the automation GitHub App. Open it by hand meanwhile: $compare"
+            ;;
+          *)
+            echo "::error::Pushed $branch but could not open a pull request, see the output above. Open it by hand: $compare"
+            ;;
+          esac
+          exit 1
