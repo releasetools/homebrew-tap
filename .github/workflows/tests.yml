@@ -45,8 +45,11 @@ jobs:
       - name: Install the formula and run its test block
         if: github.event_name == 'pull_request'
         run: |
-          brew install --formula --verbose ./Formula/releasetools-cli.rb
-          brew test --verbose releasetools-cli
+          # Tap-qualified, not a path: brew rejects a bare formula file with
+          # "Homebrew requires formulae to be in a tap". setup-homebrew has already
+          # tapped this checkout as releasetools/tap, so this tests the PR's formula.
+          brew install --formula --verbose releasetools/tap/releasetools-cli
+          brew test --verbose releasetools/tap/releasetools-cli
 
       - name: Upload bottles as artifact
         if: always() && github.event_name == 'pull_request'
