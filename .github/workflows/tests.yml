@@ -40,8 +40,9 @@ jobs:
 
       # test-bot downgraded a failing formula test to SKIPPED and still exited 0, so the
       # v0.0.13 bump reported success while `releasetools base::check_deps` was erroring
-      # with "python is not installed". brew test exits non-zero when the test block
-      # fails, which is what this gate actually needs.
+      # with "python is not installed" (the formula depended on python3 for a single
+      # function that releasetools/cli#35 later removed entirely). brew test exits
+      # non-zero when the test block fails, which is what this gate actually needs.
       - name: Install the formula and run its test block
         if: github.event_name == 'pull_request'
         run: |
