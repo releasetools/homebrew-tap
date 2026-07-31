@@ -48,7 +48,14 @@ jobs:
           # Tap-qualified, not a path: brew rejects a bare formula file with
           # "Homebrew requires formulae to be in a tap". setup-homebrew has already
           # tapped this checkout as releasetools/tap, so this tests the PR's formula.
-          brew install --formula --verbose releasetools/tap/releasetools-cli
+          #
+          # Dependencies are installed explicitly because test-bot leaves the formula
+          # installed while uninstalling what it depends on, so brew install is a no-op
+          # here and brew test then refuses with "missing test dependencies:
+          # ... python@3.14". The formula install stays as a no-op safety net for the
+          # case where test-bot did not install it at all.
+          brew install --formula --only-dependencies releasetools/tap/releasetools-cli
+          brew install --formula releasetools/tap/releasetools-cli
           brew test --verbose releasetools/tap/releasetools-cli
 
       - name: Upload bottles as artifact
