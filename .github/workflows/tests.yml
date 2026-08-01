@@ -38,6 +38,26 @@ jobs:
       - run: brew test-bot --only-formulae
         if: github.event_name == 'pull_request'
 
+      # test-bot's own step above can silently pass over a real failure: it downgrades
+      # a failing `brew test` to SKIPPED and still exits 0. That is how a formula whose
+      # test block genuinely errored once merged with a green check (see #19). brew
+      # test exits non-zero when the test block fails, which is what this gate needs.
+      - name: Install the formula and run its test block
+        if: github.event_name == 'pull_request'
+        run: |
+          # Tap-qualified, not a path: brew rejects a bare formula file with
+          # "Homebrew requires formulae to be in a tap". setup-homebrew has already
+          # tapped this checkout as releasetools/tap, so this tests the PR's formula.
+          #
+          # Dependencies are installed explicitly because test-bot leaves the formula
+          # installed while uninstalling what it depends on, so brew install is a no-op
+          # here and brew test then refuses with "missing test dependencies". The formula
+          # currently declares none, which makes that line a no-op too -- it is kept so
+          # the gate does not quietly break again if one is ever added back.
+          brew install --formula --only-dependencies releasetools/tap/releasetools-cli
+          brew install --formula releasetools/tap/releasetools-cli
+          brew test --verbose releasetools/tap/releasetools-cli
+
       - name: Upload bottles as artifact
         if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
