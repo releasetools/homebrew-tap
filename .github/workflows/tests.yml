@@ -51,10 +51,13 @@ jobs:
           #
           # Dependencies are installed explicitly because test-bot leaves the formula
           # installed while uninstalling what it depends on, so brew install is a no-op
-          # here and brew test then refuses with "missing test dependencies". The formula
-          # currently declares none, which makes that line a no-op too -- it is kept so
-          # the gate does not quietly break again if one is ever added back.
-          brew install --formula --only-dependencies releasetools/tap/releasetools-cli
+          # here and brew test then refuses with "missing test dependencies".
+          #
+          # --include-test as well, because a ':test' dependency is not a dependency as far
+          # as --only-dependencies is concerned. 'brew deps' lists nothing for this formula
+          # and 'brew deps --include-test' lists gh, which is the whole difference, and
+          # without it brew test refuses with exactly the message this line exists to stop.
+          brew install --formula --only-dependencies --include-test releasetools/tap/releasetools-cli
           brew install --formula releasetools/tap/releasetools-cli
           brew test --verbose releasetools/tap/releasetools-cli
 
