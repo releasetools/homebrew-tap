@@ -1,8 +1,8 @@
 class ReleasetoolsCli < Formula
   desc "Release tools for GitHub workflows and local use"
   homepage "https://release.tools"
-  url "https://github.com/releasetools/cli/releases/download/v0.2.0/releasetools.bash"
-  sha256 "1a876020a294cb2f0845ff8278cddc01529dc7e3d387f8ab57c02bb9aacd4ad0"
+  url "https://github.com/releasetools/cli/releases/download/v0.3.0/releasetools.bash"
+  sha256 "eb9345b6a7b85397a4bbd11975a3826bd688ffa9a00b704f03d146eefc93222e"
   license "Apache-2.0"
   head "https://github.com/releasetools/cli.git", branch: "main"
 
