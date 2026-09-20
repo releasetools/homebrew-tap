@@ -30,8 +30,29 @@ jobs:
     name: Bump the formula to the latest release
     runs-on: ubuntu-latest
     steps:
+      # GITHUB_TOKEN cannot open a pull request here: the organization does not
+      # allow Actions to create them, and a repository cannot override that. One
+      # it could open would have its checks held pending approval, which for a
+      # formula bump means brew test-bot does not run unattended -- the only
+      # thing standing between a bad formula and everybody's `brew upgrade`.
+      # The org's automation App is subject to neither.
+      - name: Generate a token for this repository
+        id: app-token
+        if: vars.GH_APP_CLIENT_ID != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # So the push below carries the App's identity rather than the
+          # workflow's, which is what keeps the pull request's checks running.
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Bump the formula
         id: bump
@@ -51,8 +72,12 @@ jobs:
         # An empty version means the formula was already current, so there is nothing to do.
         if: steps.bump.outputs.version != ''
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           VERSION: ${{ steps.bump.outputs.version }}
+          # The App where there is one, so the commit is attributed to the
+          # automation rather than to a bot nobody installed.
+          COMMIT_NAME: ${{ steps.app-token.outputs.app-slug && format('{0}[bot]', steps.app-token.outputs.app-slug) || 'github-actions[bot]' }}
+          COMMIT_EMAIL: ${{ steps.app-token.outputs.app-slug && format('{0}+{1}[bot]@users.noreply.github.com', steps.app-token.outputs.installation-id, steps.app-token.outputs.app-slug) || '41898282+github-actions[bot]@users.noreply.github.com' }}
         run: |
           branch="bump-formula-$VERSION"
 
@@ -76,8 +101,8 @@ jobs:
             echo "Branch $branch exists with no open pull request; opening one." >&2
             git checkout -B "$branch" "origin/$branch"
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config user.name "${COMMIT_NAME}"
+            git config user.email "${COMMIT_EMAIL}"
             git checkout -b "$branch"
             git commit -m "chore(formula): update releasetools-cli to $VERSION"
             git push origin "$branch"
@@ -105,7 +130,7 @@ jobs:
           # green tick here would mean nobody finds out it stopped halfway.
           case "$out" in
           *"not permitted to create or approve pull requests"*)
-            echo "::error::Pushed $branch but could not open a pull request. Either enable Settings > Actions > General > Allow GitHub Actions to create and approve pull requests, or land releasetools/cli#30 so this step runs as the automation GitHub App. Open it by hand meanwhile: $compare"
+            echo "::error::Pushed $branch but could not open a pull request. This step runs as the automation App where GH_APP_CLIENT_ID is set; check that the App has Pull requests write and that its installation covers this repository. Open it by hand meanwhile: $compare"
             ;;
           *)
             echo "::error::Pushed $branch but could not open a pull request, see the output above. Open it by hand: $compare"
