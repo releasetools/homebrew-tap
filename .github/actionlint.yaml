@@ -1,0 +1,10 @@
+# brew style lints these workflows with actionlint, using this file when the
+# tap has one and Homebrew's own otherwise. Homebrew's declares a single
+# configuration variable, BREW_COMMIT_CLIENT_ID, so every other vars.* read
+# here is reported as undefined and brew test-bot fails on it.
+#
+# Listing them here is also the point: a typo in a variable name reads as an
+# empty string at runtime, which for the token below means silently falling
+# back to GITHUB_TOKEN and losing the pull request again.
+config-variables:
+  - GH_APP_CLIENT_ID
