@@ -50,8 +50,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # So the push below carries the App's identity rather than the
-          # workflow's, which is what keeps the pull request's checks running.
+          # The credential the push and `gh pr create` below use. The commit
+          # author stays github-actions[bot]: it is what the fallback path
+          # writes, and an author is not what decides whether the checks run.
           token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Bump the formula
@@ -74,10 +75,6 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           VERSION: ${{ steps.bump.outputs.version }}
-          # The App where there is one, so the commit is attributed to the
-          # automation rather than to a bot nobody installed.
-          COMMIT_NAME: ${{ steps.app-token.outputs.app-slug && format('{0}[bot]', steps.app-token.outputs.app-slug) || 'github-actions[bot]' }}
-          COMMIT_EMAIL: ${{ steps.app-token.outputs.app-slug && format('{0}+{1}[bot]@users.noreply.github.com', steps.app-token.outputs.installation-id, steps.app-token.outputs.app-slug) || '41898282+github-actions[bot]@users.noreply.github.com' }}
         run: |
           branch="bump-formula-$VERSION"
 
@@ -101,8 +98,8 @@ jobs:
             echo "Branch $branch exists with no open pull request; opening one." >&2
             git checkout -B "$branch" "origin/$branch"
           else
-            git config user.name "${COMMIT_NAME}"
-            git config user.email "${COMMIT_EMAIL}"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git checkout -b "$branch"
             git commit -m "chore(formula): update releasetools-cli to $VERSION"
             git push origin "$branch"
