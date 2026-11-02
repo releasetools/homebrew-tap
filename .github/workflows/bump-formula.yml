@@ -28,7 +28,7 @@ permissions:
 jobs:
   bump:
     name: Bump the formula to the latest release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # GITHUB_TOKEN cannot open a pull request here: the organization does not
       # allow Actions to create them, and a repository cannot override that. One
