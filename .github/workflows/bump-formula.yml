@@ -50,9 +50,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # The credential the push and `gh pr create` below use. The commit
-          # author stays github-actions[bot]: it is what the fallback path
-          # writes, and an author is not what decides whether the checks run.
+          # The credential the steps below use to create the branch, commit
+          # the formula and open the pull request.
           token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Bump the formula
@@ -69,42 +68,80 @@ jobs:
           fi
           echo "version=$version" >>"$GITHUB_OUTPUT"
 
-      - name: Open a pull request
+      # main requires verified signatures, and a commit made with git on the runner
+      # has none. The formula is committed through createCommitOnBranch instead,
+      # which GitHub signs for the token that calls it.
+      - name: Prepare the branch
+        id: branch
         # An empty version means the formula was already current, so there is nothing to do.
         if: steps.bump.outputs.version != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           VERSION: ${{ steps.bump.outputs.version }}
         run: |
-          branch="bump-formula-$VERSION"
+          set -euo pipefail
 
-          # Nothing staged means the bump reported a new version without changing the file.
+          branch="bump-formula-$VERSION"
+          echo "name=$branch" >>"$GITHUB_OUTPUT"
+
+          # Nothing changed means the bump reported a new version without changing the file.
           # That should be impossible -- bump-formula.sh verifies its own rewrite -- so treat
           # it as a failure rather than opening an empty pull request.
-          git add Formula
-          if git diff --cached --quiet; then
+          if git diff --quiet -- Formula; then
             echo "::error::bump-formula.sh reported $VERSION but changed nothing" >&2
             exit 1
           fi
 
-          # The branch can already exist from an earlier run whose push succeeded but whose
-          # pull request did not. Only skip when there is also a pull request open for it,
-          # otherwise the rerun would report success while leaving the branch unmerged.
+          # The branch can already exist from an earlier run that stopped partway. Only skip
+          # when there is also a pull request open for it, otherwise the rerun would report
+          # success while leaving the branch unmerged. A branch with no commit of its own
+          # yet gets the formula committed onto it.
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
             if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
-              echo "Branch $branch is already pushed and has an open pull request." >&2
+              echo "Branch $branch already has an open pull request." >&2
+              echo "action=none" >>"$GITHUB_OUTPUT"
               exit 0
             fi
-            echo "Branch $branch exists with no open pull request; opening one." >&2
-            git checkout -B "$branch" "origin/$branch"
+            ahead="$(gh api "repos/${GITHUB_REPOSITORY}/compare/$(git rev-parse HEAD)...${branch}" --jq .ahead_by)"
+            if [ "$ahead" != "0" ]; then
+              echo "Branch $branch exists with no open pull request; opening one." >&2
+              echo "action=open" >>"$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Branch $branch exists with nothing on it; committing the formula." >&2
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git checkout -b "$branch"
-            git commit -m "chore(formula): update releasetools-cli to $VERSION"
-            git push origin "$branch"
+            # signed-push commits onto an existing branch. It starts at the checked-out
+            # commit, so its workflow files are main's own.
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/heads/${branch}" -f sha="$(git rev-parse HEAD)" >/dev/null
           fi
 
+          # Only the formula goes into the commit. With prune off, signed-push adds or
+          # updates what is staged here and leaves every other file on the branch alone.
+          staged="$RUNNER_TEMP/formula-bump"
+          mkdir -p "$staged/Formula"
+          cp Formula/releasetools-cli.rb "$staged/Formula/"
+          echo "staged=$staged" >>"$GITHUB_OUTPUT"
+          echo "action=commit" >>"$GITHUB_OUTPUT"
+
+      - name: Commit the formula, signed
+        if: steps.branch.outputs.action == 'commit'
+        uses: releasetools/actions/signed-push@3d4c910d9e482f13dc134b80647541d4bd206c44 # v0.9.0
+        with:
+          source-dir: ${{ steps.branch.outputs.staged }}
+          target-repo: ${{ github.repository }}
+          target-branch: ${{ steps.branch.outputs.name }}
+          headline: "chore(formula): update releasetools-cli to ${{ steps.bump.outputs.version }}"
+          prune: "false"
+          token: ${{ steps.app-token.outputs.token || github.token }}
+
+      - name: Open a pull request
+        if: steps.branch.outputs.action == 'commit' || steps.branch.outputs.action == 'open'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          VERSION: ${{ steps.bump.outputs.version }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
           # Built with printf so the YAML block indentation does not end up in the body.
           body="$(printf '%s\n\n%s\n' \
             "Points the formula at the \`releasetools.bash\` asset from [$VERSION](https://github.com/releasetools/cli/releases/tag/$VERSION), with the \`sha256\` taken from the checksum published alongside it after verifying the download against it." \
@@ -112,7 +149,7 @@ jobs:
 
           # --base is omitted so gh targets the repository's default branch.
           if out="$(gh pr create \
-            --head "$branch" \
+            --head "$BRANCH" \
             --title "chore(formula): update releasetools-cli to $VERSION" \
             --body "$body" 2>&1)"; then
             echo "$out"
@@ -120,17 +157,17 @@ jobs:
           fi
 
           echo "$out" >&2
-          compare="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${branch}?expand=1"
+          compare="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${BRANCH}?expand=1"
 
-          # The branch is pushed and the formula in it is correct, so the bump is not lost.
+          # The branch is on the remote and the formula in it is correct, so the bump is not lost.
           # Still a failure: the job's purpose is to leave a reviewable pull request, and a
           # green tick here would mean nobody finds out it stopped halfway.
           case "$out" in
           *"not permitted to create or approve pull requests"*)
-            echo "::error::Pushed $branch but could not open a pull request. This step runs as the automation App where GH_APP_CLIENT_ID is set; check that the App has Pull requests write and that its installation covers this repository. Open it by hand meanwhile: $compare"
+            echo "::error::Committed $BRANCH but could not open a pull request. This step runs as the automation App where GH_APP_CLIENT_ID is set; check that the App has Pull requests write and that its installation covers this repository. Open it by hand meanwhile: $compare"
             ;;
           *)
-            echo "::error::Pushed $branch but could not open a pull request, see the output above. Open it by hand: $compare"
+            echo "::error::Committed $BRANCH but could not open a pull request, see the output above. Open it by hand: $compare"
             ;;
           esac
           exit 1
