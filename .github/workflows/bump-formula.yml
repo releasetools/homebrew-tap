@@ -1,4 +1,5 @@
 name: Bump formula
+run-name: Bump formula to ${{ inputs.version || github.event.client_payload.version || 'the latest release' }}
 
 # Renovate handles the GitHub Actions in this repo, but it cannot bump the formula itself --
 # see the comment at the top of scripts/bump-formula.sh, and the packageRules entry in
