@@ -34,10 +34,15 @@ make check
 
 ### Update the formula version
 
-- Edit [releasetools-cli.rb](Formula/releasetools-cli.rb)
-- Update `url=https://github.com/releasetools/bash/releases/download/vX.Y.Z/releasetools.bash`
-- Update the checksum in the `sha256` field
+A release of [releasetools/cli](https://github.com/releasetools/cli) asks
+`bump-formula.yml` to update the formula, which also runs daily. It points the
+formula at the new `releasetools.bash` and its published checksum, commits that
+as a signed commit, opens a pull request and queues it to merge. `main` requires
+`brew test-bot` to pass on macOS and both Ubuntu runners, so the update merges
+once the formula installs everywhere and stays open when it does not.
 
-  ```shell
-  curl -sL "https://github.com/releasetools/bash/releases/download/vX.Y.Z/releasetools.bash.sha256"
-  ```
+To bump to a particular release by hand:
+
+```shell
+gh workflow run bump-formula.yml -f version=vX.Y.Z
+```

@@ -154,6 +154,13 @@ jobs:
             --title "chore(formula): update releasetools-cli to $VERSION" \
             --body "$body" 2>&1)"; then
             echo "$out"
+            # main requires the three test-bot checks, so GitHub merges the bump
+            # once brew has installed the formula on every runner, and never
+            # before. A failing check leaves the pull request open for a person.
+            if ! gh pr merge "$BRANCH" --auto --squash; then
+              echo "::error::Opened the pull request for $BRANCH but could not queue its auto-merge. Merge it by hand once test-bot passes."
+              exit 1
+            fi
             exit 0
           fi
 
